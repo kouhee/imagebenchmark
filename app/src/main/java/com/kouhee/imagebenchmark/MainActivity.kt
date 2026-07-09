@@ -5,8 +5,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.collectAsState
 import com.kouhee.imagebenchmark.data.loader.BitmapLoader
 import com.kouhee.imagebenchmark.di.AppContainer
@@ -22,31 +20,29 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val bitmap =
-            BitmapLoader.loadDemoImage(this)
+        val bitmap = BitmapLoader.loadDemoImage(this)
 
-        // Get raw dimensions from resource header
+        // Get raw dimensions and file size from assets
+        val fileName = "roadster1.jpg"
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeResource(resources, R.drawable.roadster1, options)
-
-        // Correctly get resource file size
-        val fileSize = try {
-            val assetFileDescriptor = resources.openRawResourceFd(R.drawable.roadster1)
-            val size = assetFileDescriptor?.length ?: 0L
-            assetFileDescriptor?.close()
-            size
+        
+        var fileSize = 0L
+        try {
+            assets.open(fileName).use { stream ->
+                BitmapFactory.decodeStream(stream, null, options)
+            }
+            assets.openFd(fileName).use { fd ->
+                fileSize = fd.length
+            }
         } catch (e: Exception) {
-            0L
+            e.printStackTrace()
         }
 
         viewModel.setBitmap(bitmap, options.outWidth, options.outHeight, fileSize)
 
         setContent {
-
             val uiState = viewModel.uiState.collectAsState()
-
             MaterialTheme {
-
                 MainScreen(
                     uiState = uiState.value,
                     onBitmapSelected = { b, w, h, s ->
@@ -57,9 +53,6 @@ class MainActivity : ComponentActivity() {
                     }
                 )
             }
-
         }
-
     }
-
 }
