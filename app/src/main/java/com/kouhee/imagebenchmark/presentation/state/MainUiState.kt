@@ -12,5 +12,6 @@ data class MainUiState(
     val elapsedTime: Double = 0.0,
     val originalWidth: Int = 0,
     val originalHeight: Int = 0,
-    val originalFileSize: Long = 0L
+    val originalFileSize: Long = 0L,
+    val jniString: String = ""
 )

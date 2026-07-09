@@ -20,6 +20,10 @@ class MainViewModel(
 
     private var currentImageData: ImageData? = null
 
+    fun setJniString(text: String) {
+        _uiState.value = _uiState.value.copy(jniString = text)
+    }
+
     fun setBitmap(bitmap: Bitmap, originalWidth: Int, originalHeight: Int, fileSize: Long) {
 
         currentImageData = BitmapMapper.toImageData(bitmap)

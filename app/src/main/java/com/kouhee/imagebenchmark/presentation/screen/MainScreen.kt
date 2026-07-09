@@ -9,6 +9,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.kouhee.imagebenchmark.presentation.state.MainUiState
@@ -90,10 +91,24 @@ fun MainScreen(
             .padding(10.dp)
     ) {
 
-        Text(
-            text = "Performance Lab",
-            style = MaterialTheme.typography.headlineMedium
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Performance Lab",
+                style = MaterialTheme.typography.headlineMedium
+            )
+        }
+
+        if (uiState.jniString.isNotEmpty()) {
+            Text(
+                text = uiState.jniString,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary
+            )
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
