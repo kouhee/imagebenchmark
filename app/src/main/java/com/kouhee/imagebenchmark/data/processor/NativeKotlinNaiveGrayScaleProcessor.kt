@@ -1,6 +1,5 @@
 package com.kouhee.imagebenchmark.data.processor
 
-import android.util.Log
 import com.kouhee.imagebenchmark.domain.model.ImageData
 
 class NativeKotlinNaiveGrayScaleProcessor : ImageProcessor {
@@ -11,7 +10,6 @@ class NativeKotlinNaiveGrayScaleProcessor : ImageProcessor {
         }
     }
 
-    private external fun stringFromJNI(): String
     private external fun convertToGrayScale(imageData: IntArray, width: Int, height: Int): IntArray
 
     override fun process(image: ImageData): ImageData {

@@ -60,8 +60,8 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 MainScreen(
                     uiState = uiState.value,
-                    onBitmapSelected = { b, w, h, s ->
-                        viewModel.setBitmap(b, w, h, s)
+                    onUriSelected = { uri ->
+                        viewModel.loadImage(contentResolver, uri)
                     },
                     onFilterSelected = { filter ->
                         viewModel.setFilter(filter)
