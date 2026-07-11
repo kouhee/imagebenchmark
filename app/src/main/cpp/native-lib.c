@@ -54,13 +54,6 @@ Java_com_kouhee_imagebenchmark_MainActivity_stringFromJNI(
     return (*env)->NewStringUTF(env, "Hello from C (NDK)!");
 }
 
-JNIEXPORT jstring JNICALL Java_com_kouhee_imagebenchmark_data_processor_NativeKotlinNaiveGrayScaleProcessor_stringFromJNI(
-        JNIEnv* env,
-        jobject thiz) {
-    LOGI("stringFromJNI called from Kotlin!");
-    return (*env)->NewStringUTF(env, "Hello from C (NDK)!");
-}
-
 // ここに変換処理を書く
 JNIEXPORT jintArray JNICALL Java_com_kouhee_imagebenchmark_data_processor_NativeKotlinNaiveGrayScaleProcessor_convertToGrayScale(
         JNIEnv* env,
