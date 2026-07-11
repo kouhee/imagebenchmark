@@ -63,6 +63,12 @@ class MainActivity : ComponentActivity() {
                     onBitmapSelected = { b, w, h, s ->
                         viewModel.setBitmap(b, w, h, s)
                     },
+                    onFilterSelected = { filter ->
+                        viewModel.setFilter(filter)
+                    },
+                    onEngineSelected = { engine ->
+                        viewModel.setEngine(engine)
+                    },
                     onProcessClick = {
                         viewModel.processImage()
                     }

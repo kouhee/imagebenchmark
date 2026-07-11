@@ -5,12 +5,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.kouhee.imagebenchmark.presentation.state.MainUiState
 import android.graphics.Bitmap
@@ -26,6 +30,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import com.kouhee.imagebenchmark.domain.model.FilterType
+import com.kouhee.imagebenchmark.domain.model.ProcessingEngine
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 
@@ -34,6 +40,8 @@ import androidx.compose.ui.platform.LocalContext
 fun MainScreen(
     uiState: MainUiState,
     onBitmapSelected: (Bitmap, Int, Int, Long) -> Unit,
+    onFilterSelected: (FilterType) -> Unit,
+    onEngineSelected: (ProcessingEngine) -> Unit,
     onProcessClick: () -> Unit
 ) {
 
@@ -130,9 +138,52 @@ fun MainScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text("Filter : ${uiState.selectedFilter.displayName()}")
+        Text("Filter :", style = MaterialTheme.typography.titleSmall)
+        Row(Modifier.selectableGroup()) {
+            FilterType.entries.forEach { filter ->
+                Row(
+                    Modifier
+                        .selectable(
+                            selected = (uiState.selectedFilter == filter),
+                            onClick = { onFilterSelected(filter) },
+                            role = Role.RadioButton
+                        )
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = (uiState.selectedFilter == filter),
+                        onClick = null // null recommended for accessibility with screen readers
+                    )
+                    Text(text = filter.displayName())
+                }
+            }
+        }
 
-        Text("Engine : ${uiState.selectedEngine.displayName()}")
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text("Engine :", style = MaterialTheme.typography.titleSmall)
+        Column(Modifier.selectableGroup()) {
+            ProcessingEngine.entries.forEach { engine ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .selectable(
+                            selected = (uiState.selectedEngine == engine),
+                            onClick = { onEngineSelected(engine) },
+                            role = Role.RadioButton
+                        )
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = (uiState.selectedEngine == engine),
+                        onClick = null
+                    )
+                    Text(text = engine.displayName())
+                }
+            }
+        }
 
         if (uiState.originalWidth > 0) {
             val originalKB = uiState.originalFileSize / 1024.0
@@ -172,7 +223,7 @@ fun MainScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Elapsed : %.2f ms".format(uiState.elapsedTime),
+            text = "Elapsed : %.3f μs".format(uiState.elapsedTimeUs),
             style = MaterialTheme.typography.bodyLarge
         )
 

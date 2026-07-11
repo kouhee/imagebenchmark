@@ -9,7 +9,7 @@ data class MainUiState(
     val outputBitmap: Bitmap? = null,
     val selectedFilter: FilterType = FilterType.GRAYSCALE,
     val selectedEngine: ProcessingEngine = ProcessingEngine.KOTLIN_NAIVE,
-    val elapsedTime: Double = 0.0,
+    val elapsedTimeUs: Double = 0.0,
     val originalWidth: Int = 0,
     val originalHeight: Int = 0,
     val originalFileSize: Long = 0L,

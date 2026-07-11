@@ -53,3 +53,33 @@ Java_com_kouhee_imagebenchmark_MainActivity_stringFromJNI(
     print_native_backtrace();
     return (*env)->NewStringUTF(env, "Hello from C (NDK)!");
 }
+
+JNIEXPORT jstring JNICALL Java_com_kouhee_imagebenchmark_data_processor_NativeKotlinNaiveGrayScaleProcessor_stringFromJNI(
+        JNIEnv* env,
+        jobject thiz) {
+    LOGI("stringFromJNI called from Kotlin!");
+    return (*env)->NewStringUTF(env, "Hello from C (NDK)!");
+}
+
+// ここに変換処理を書く
+JNIEXPORT jintArray JNICALL Java_com_kouhee_imagebenchmark_data_processor_NativeKotlinNaiveGrayScaleProcessor_convertToGrayScale(
+        JNIEnv* env,
+        jobject thiz,
+        jintArray imageData,
+        jint width,
+        jint height) {
+    LOGI("convertToGrayScale called from Kotlin!");
+    LOGI("width: %d, height: %d", width, height);
+
+    jint *pixels = (*env)->GetIntArrayElements(env, imageData, NULL);
+    if (pixels == NULL) {
+        return NULL;
+    }
+    LOGI("imageData[0]: %x", pixels[0]);
+    (*env)->ReleaseIntArrayElements(env, imageData, pixels, JNI_ABORT);
+    jintArray result = (*env)->NewIntArray(env, width * height);
+    if (result == NULL) {
+        return NULL; // Out of memory error thrown
+    }
+    return result;
+}

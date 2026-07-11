@@ -1,16 +1,15 @@
 package com.kouhee.imagebenchmark.di
 
-import com.kouhee.imagebenchmark.data.processor.KotlinNaiveGrayScaleProcessor
+import com.kouhee.imagebenchmark.data.processor.ImageProcessorFactory
 import com.kouhee.imagebenchmark.data.repository.ImageProcessorRepositoryImpl
 import com.kouhee.imagebenchmark.domain.usecase.ProcessImageUseCase
 
 object AppContainer {
 
-    private val processor =
-        KotlinNaiveGrayScaleProcessor()
+    private val factory = ImageProcessorFactory()
 
     private val repository =
-        ImageProcessorRepositoryImpl(processor)
+        ImageProcessorRepositoryImpl(factory)
 
     val processImageUseCase =
         ProcessImageUseCase(repository)
