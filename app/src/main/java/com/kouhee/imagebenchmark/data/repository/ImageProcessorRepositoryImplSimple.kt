@@ -11,7 +11,7 @@ import com.kouhee.imagebenchmark.domain.model.ProcessingEngine
 import com.kouhee.imagebenchmark.domain.repository.ImageProcessorRepository
 import java.util.concurrent.atomic.AtomicInteger
 
-class ImageProcessorRepositoryImpl(
+class ImageProcessorRepositoryImplSimple(
     private val factory: ImageProcessorFactory
 ) : ImageProcessorRepository {
 
@@ -19,8 +19,6 @@ class ImageProcessorRepositoryImpl(
         private const val TRACE_NAME = "ProcessRepository"
         private const val TAG = "Repository"
         private val traceCounter = AtomicInteger(0)
-        var enableWarmup = true
-        private var warmupDone = false
     }
 
     override suspend fun process(
@@ -30,31 +28,8 @@ class ImageProcessorRepositoryImpl(
     ): ImageData {
         val eventId = traceCounter.getAndIncrement()
         Trace.beginAsyncSection(TRACE_NAME, eventId)
-        val result = runProcess(image, filter, engine, eventId)
-        Trace.endAsyncSection(TRACE_NAME, eventId)
-        return result
-    }
-
-    suspend fun warmup(
-        image: ImageData,
-        filter: FilterType,
-        engine: ProcessingEngine
-    ) {
-        if (!enableWarmup || warmupDone) return
-
-        Log.d(TAG, "Warmup START")
-        process(image, filter, engine)
-        warmupDone = true
-        Log.d(TAG, "Warmup DONE")
-    }
-
-    private suspend fun runProcess(
-        image: ImageData,
-        filter: FilterType,
-        engine: ProcessingEngine,
-        eventId: Int
-    ): ImageData {
         val processor = factory.create(filter, engine)
+
         val start = ProcessingTimer.mark()
         val result = processor.process(image)
         val timing = ProcessingTimer.durationUs(start, ProcessingTimer.mark())
@@ -66,10 +41,8 @@ class ImageProcessorRepositoryImpl(
 
         result.processingTimeUs = processingTimeUs
         result.processingTimeMs = processingTimeUs / 1000.0
-        Log.d(
-            TAG,
-            "process END #$eventId on ${Thread.currentThread().name}, $logic, time: ${processingTimeUs}us"
-        )
+        Log.d(TAG, "process END #$eventId on ${Thread.currentThread().name}, $logic, time: ${processingTimeUs}us")
+        Trace.endAsyncSection(TRACE_NAME, eventId)
         return result
     }
 }

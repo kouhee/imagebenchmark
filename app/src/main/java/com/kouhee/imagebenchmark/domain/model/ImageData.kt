@@ -4,5 +4,6 @@ data class ImageData(
     val width: Int,
     val height: Int,
     val pixels: IntArray,
-    val processingTimeUs: Double = 0.0
+    var processingTimeUs: Double = 0.0,
+    var processingTimeMs: Double = 0.0,
 )

@@ -14,6 +14,7 @@ import com.kouhee.imagebenchmark.domain.model.FilterType
 import com.kouhee.imagebenchmark.domain.model.ImageData
 import com.kouhee.imagebenchmark.domain.model.ProcessingEngine
 import com.kouhee.imagebenchmark.domain.usecase.ProcessImageUseCase
+import com.kouhee.imagebenchmark.presentation.state.EngineTimingStats
 import com.kouhee.imagebenchmark.presentation.state.MainUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,7 @@ class MainViewModel(
     val uiState = _uiState.asStateFlow()
 
     private var originalImageData: ImageData? = null
+    private var processingBuffer: IntArray? = null
 
     fun setJniString(text: String) {
         _uiState.value = _uiState.value.copy(jniString = text)
@@ -39,14 +41,24 @@ class MainViewModel(
     }
 
     fun setEngine(engine: ProcessingEngine) {
-        _uiState.value = _uiState.value.copy(selectedEngine = engine)
+        val state = _uiState.value
+        val stats = state.engineTimingStats[engine]
+        _uiState.value = state.copy(
+            selectedEngine = engine,
+            fastestTimeUs = stats?.fastestTimeUs,
+            slowestTimeUs = stats?.slowestTimeUs
+        )
     }
 
     fun setBitmap(bitmap: Bitmap, originalWidth: Int, originalHeight: Int, fileSize: Long) {
         // UI update should be fast
         _uiState.value = _uiState.value.copy(
             inputBitmap = bitmap,
-            outputBitmap = bitmap,
+            outputBitmap = null,  // Start with null, will be set after processing
+            elapsedTimeUs = 0.0,
+            fastestTimeUs = null,
+            slowestTimeUs = null,
+            engineTimingStats = emptyMap(),
             originalWidth = originalWidth,
             originalHeight = originalHeight,
             originalFileSize = fileSize
@@ -107,6 +119,10 @@ class MainViewModel(
                 _uiState.value = _uiState.value.copy(
                     inputBitmap = bitmap,
                     outputBitmap = bitmap,
+                    elapsedTimeUs = 0.0,
+                    fastestTimeUs = null,
+                    slowestTimeUs = null,
+                    engineTimingStats = emptyMap(),
                     originalWidth = originalWidth,
                     originalHeight = originalHeight,
                     originalFileSize = fileSize
@@ -119,12 +135,21 @@ class MainViewModel(
         val image = originalImageData ?: return
 
         viewModelScope.launch {
+            val state = _uiState.value
+            val buffer = if (processingBuffer == null || processingBuffer!!.size != image.pixels.size) {
+                image.pixels.copyOf().also { processingBuffer = it }
+            } else {
+                processingBuffer!!.also {
+                    System.arraycopy(image.pixels, 0, it, 0, image.pixels.size)
+                }
+            }
+            val imageToProcess = ImageData(image.width, image.height, buffer)
 
             val result = withContext(Dispatchers.Default) {
                 processImageUseCase(
-                    image,
-                    _uiState.value.selectedFilter,
-                    _uiState.value.selectedEngine
+                    imageToProcess,
+                    state.selectedFilter,
+                    state.selectedEngine
                 )
             }
 
@@ -132,10 +157,26 @@ class MainViewModel(
                 BitmapMapper.toBitmap(result)
             }
 
-            _uiState.value = _uiState.value.copy(
-                outputBitmap = bitmap,
-                elapsedTimeUs = result.processingTimeUs
-            )
+            withContext(Dispatchers.Main) {
+                val currentState = _uiState.value
+                val selectedEngine = state.selectedEngine
+                val existingStats = currentState.engineTimingStats[selectedEngine]
+                val updatedStats = EngineTimingStats(
+                    fastestTimeUs = existingStats?.fastestTimeUs?.let { minOf(it, result.processingTimeUs) }
+                        ?: result.processingTimeUs,
+                    slowestTimeUs = existingStats?.slowestTimeUs?.let { maxOf(it, result.processingTimeUs) }
+                        ?: result.processingTimeUs
+                )
+                val updatedStatsMap = currentState.engineTimingStats + (selectedEngine to updatedStats)
+                _uiState.value = _uiState.value.copy(
+                    outputBitmap = bitmap,
+                    elapsedTimeUs = result.processingTimeUs,
+                    fastestTimeUs = updatedStats.fastestTimeUs,
+                    slowestTimeUs = updatedStats.slowestTimeUs,
+                    engineTimingStats = updatedStatsMap,
+                )
+            }
         }
     }
+
 }

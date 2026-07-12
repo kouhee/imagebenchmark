@@ -1,35 +1,34 @@
 package com.kouhee.imagebenchmark.presentation.screen
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
-import com.kouhee.imagebenchmark.presentation.state.MainUiState
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Arrangement
 import com.kouhee.imagebenchmark.domain.model.FilterType
 import com.kouhee.imagebenchmark.domain.model.ProcessingEngine
-import androidx.compose.ui.graphics.asImageBitmap
-
+import com.kouhee.imagebenchmark.presentation.state.MainUiState
 
 @Composable
 fun MainScreen(
@@ -39,11 +38,10 @@ fun MainScreen(
     onEngineSelected: (ProcessingEngine) -> Unit,
     onProcessClick: () -> Unit
 ) {
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri -> uri?.let(onUriSelected) }
 
-    val photoPicker =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.PickVisualMedia()
-        ) { uri ->  uri?.let { onUriSelected(it) } }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -73,15 +71,11 @@ fun MainScreen(
 
         Button(
             onClick = {
-
                 photoPicker.launch(
-
                     PickVisualMediaRequest(
                         ActivityResultContracts.PickVisualMedia.ImageOnly
                     )
-
                 )
-
             }
         ) {
             Text("画像を選択")
@@ -137,28 +131,19 @@ fun MainScreen(
         }
 
         if (uiState.originalWidth > 0) {
-            val originalKB = uiState.originalFileSize / 1024.0
-            val originalMB = originalKB / 1024.0
-            val originalSizeText = if (originalMB >= 1.0) "%.2f MB".format(originalMB) else "%.2f KB".format(originalKB)
-
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Original File: ${uiState.originalWidth} x ${uiState.originalHeight} ($originalSizeText)",
+                text = "Original File: ${uiState.originalWidth} x ${uiState.originalHeight} (${formatBytes(uiState.originalFileSize)})",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
         }
 
         uiState.inputBitmap?.let { bitmap ->
-            // Memory size should reflect the IntArray pixel data (4 bytes per pixel)
-            val sizeInBytes = bitmap.width * bitmap.height * 4L
-            val sizeInKB = sizeInBytes / 1024.0
-            val sizeInMB = sizeInKB / 1024.0
-            val sizeText = if (sizeInMB >= 1.0) "%.2f MB".format(sizeInMB) else "%.2f KB".format(sizeInKB)
-            
+            val memorySize = bitmap.width * bitmap.height * 4L
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Memory: ${bitmap.width} x ${bitmap.height} ($sizeText)",
+                text = "Memory: ${bitmap.width} x ${bitmap.height} (${formatBytes(memorySize)})",
                 style = MaterialTheme.typography.bodySmall
             )
         }
@@ -178,6 +163,24 @@ fun MainScreen(
             style = MaterialTheme.typography.bodyLarge
         )
 
+        Text(
+            text = "Fastest (${uiState.selectedEngine.displayName()}) : ${formatTimeUs(uiState.fastestTimeUs)}",
+            style = MaterialTheme.typography.bodySmall
+        )
+
+        Text(
+            text = "Slowest (${uiState.selectedEngine.displayName()}) : ${formatTimeUs(uiState.slowestTimeUs)}",
+            style = MaterialTheme.typography.bodySmall
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Available CPU cores: ${uiState.threadCount}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.secondary
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
 
         ImagePanel(
@@ -185,7 +188,7 @@ fun MainScreen(
             bitmap = uiState.inputBitmap,
             modifier = Modifier.weight(1f)
         )
-        
+
         ImagePanel(
             title = "AFTER",
             bitmap = uiState.outputBitmap,
@@ -195,7 +198,7 @@ fun MainScreen(
 }
 
 @Composable
-fun ImagePanel(title: String, bitmap: Bitmap?, modifier: Modifier) {
+private fun ImagePanel(title: String, bitmap: Bitmap?, modifier: Modifier) {
     Column(modifier = modifier) {
         Text(
             text = title,
@@ -218,4 +221,14 @@ fun ImagePanel(title: String, bitmap: Bitmap?, modifier: Modifier) {
             )
         }
     }
+}
+
+private fun formatBytes(sizeInBytes: Long): String {
+    val sizeInKB = sizeInBytes / 1024.0
+    val sizeInMB = sizeInKB / 1024.0
+    return if (sizeInMB >= 1.0) "%.2f MB".format(sizeInMB) else "%.2f KB".format(sizeInKB)
+}
+
+private fun formatTimeUs(timeUs: Double?): String {
+    return if (timeUs == null) "--" else "%.3f μs".format(timeUs)
 }
