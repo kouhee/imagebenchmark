@@ -6,6 +6,8 @@ add_library(
         native-lib
         SHARED
         native-lib.c
+        native_grayscale.c
+        native_sobel.c
         native_thread_pool.c)
 
 # Enable NEON for all ARM architectures
