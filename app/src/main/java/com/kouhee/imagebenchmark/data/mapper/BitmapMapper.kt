@@ -30,9 +30,15 @@ object BitmapMapper {
         )
     }
 
-    fun toBitmap(image: ImageData): Bitmap {
-
-        val bitmap = createBitmap(image.width, image.height)
+    fun toBitmap(image: ImageData, targetBitmap: Bitmap? = null): Bitmap {
+        val bitmap = if (targetBitmap != null && 
+            targetBitmap.width == image.width && 
+            targetBitmap.height == image.height &&
+            targetBitmap.isMutable) {
+            targetBitmap
+        } else {
+            createBitmap(image.width, image.height)
+        }
 
         bitmap.setPixels(
             image.pixels,

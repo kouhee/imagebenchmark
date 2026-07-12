@@ -2,7 +2,6 @@ package com.kouhee.imagebenchmark
 
 import android.graphics.BitmapFactory
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
@@ -11,6 +10,7 @@ import com.kouhee.imagebenchmark.data.loader.BitmapLoader
 import com.kouhee.imagebenchmark.di.AppContainer
 import com.kouhee.imagebenchmark.presentation.screen.MainScreen
 import com.kouhee.imagebenchmark.presentation.viewmodel.MainViewModel
+import java.io.IOException
 
 class MainActivity : ComponentActivity() {
 
@@ -29,10 +29,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Log the backtrace in Kotlin before calling JNI
-        Log.i("JNI_Trace", "Calling stringFromJNI from Kotlin. StackTrace:\n" + 
-            Log.getStackTraceString(Throwable()))
-
         viewModel.setJniString(stringFromJNI())
 
         val bitmap = BitmapLoader.loadDemoImage(this)
@@ -49,7 +45,7 @@ class MainActivity : ComponentActivity() {
             assets.openFd(fileName).use { fd ->
                 fileSize = fd.length
             }
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             e.printStackTrace()
         }
 

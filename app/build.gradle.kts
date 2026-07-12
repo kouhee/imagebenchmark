@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.kouhee.imagebenchmark"
-        minSdk = 28
+        minSdk = 29
         targetSdk = 37
         versionCode = 1
         versionName = "1.0"
@@ -57,4 +57,7 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    // for analize performance
+    implementation("androidx.tracing:tracing:1.3.0")
+    implementation("androidx.core:core:1.19.0")
 }
