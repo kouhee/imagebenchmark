@@ -16,14 +16,15 @@ class ImageProcessorFactory {
             when (filter) {
                 FilterType.GRAYSCALE -> {
                     when (engine) {
+                        ProcessingEngine.BASIC -> BasicGrayScaleProcessor()
                         ProcessingEngine.KOTLIN_NAIVE -> KotlinNaiveGrayScaleProcessor()
                         ProcessingEngine.NATIVE -> NativeKotlinNaiveGrayScaleProcessor()
-                        else -> KotlinNaiveGrayScaleProcessor()
+                        ProcessingEngine.INTERPOLATED -> InterpolatedGrayScaleProcessor()
+                        ProcessingEngine.NATIVE_INTERPOLATED -> NativeInterpolatedGrayScaleProcessor()
                     }
                 }
                 FilterType.SOBEL -> {
-                    // Sobel用の実装が追加されたらここを適切に分ける
-                    KotlinNaiveGrayScaleProcessor()
+                    BasicGrayScaleProcessor()
                 }
             }
         }

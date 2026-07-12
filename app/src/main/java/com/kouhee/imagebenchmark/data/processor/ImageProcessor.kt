@@ -4,6 +4,6 @@ import com.kouhee.imagebenchmark.domain.model.ImageData
 
 interface ImageProcessor {
 
-    fun process(image: ImageData): ImageData
+    suspend fun process(image: ImageData): ImageData
 
 }
