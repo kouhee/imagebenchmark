@@ -13,7 +13,7 @@ data class MainUiState(
     val inputBitmap: Bitmap? = null,
     val outputBitmap: Bitmap? = null,
     val selectedFilter: FilterType = FilterType.GRAYSCALE,
-    val selectedEngine: ProcessingEngine = ProcessingEngine.NATIVE,
+    val selectedEngine: ProcessingEngine = ProcessingEngine.NATIVE_BASIC,
     val elapsedTimeUs: Double = 0.0,
     val fastestTimeUs: Double? = null,
     val slowestTimeUs: Double? = null,

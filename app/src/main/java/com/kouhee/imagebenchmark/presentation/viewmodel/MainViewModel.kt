@@ -37,11 +37,27 @@ class MainViewModel(
     }
 
     fun setFilter(filterType: FilterType) {
-        _uiState.value = _uiState.value.copy(selectedFilter = filterType)
+        val state = _uiState.value
+        val supportedEngines = filterType.supportedEngines()
+        val nextEngine = if (state.selectedEngine in supportedEngines) {
+            state.selectedEngine
+        } else {
+            supportedEngines.first()
+        }
+        val stats = state.engineTimingStats[nextEngine]
+        _uiState.value = state.copy(
+            selectedFilter = filterType,
+            selectedEngine = nextEngine,
+            fastestTimeUs = stats?.fastestTimeUs,
+            slowestTimeUs = stats?.slowestTimeUs
+        )
     }
 
     fun setEngine(engine: ProcessingEngine) {
         val state = _uiState.value
+        if (engine !in state.selectedFilter.supportedEngines()) {
+            return
+        }
         val stats = state.engineTimingStats[engine]
         _uiState.value = state.copy(
             selectedEngine = engine,
@@ -51,10 +67,9 @@ class MainViewModel(
     }
 
     fun setBitmap(bitmap: Bitmap, originalWidth: Int, originalHeight: Int, fileSize: Long) {
-        // UI update should be fast
         _uiState.value = _uiState.value.copy(
             inputBitmap = bitmap,
-            outputBitmap = null,  // Start with null, will be set after processing
+            outputBitmap = null,
             elapsedTimeUs = 0.0,
             fastestTimeUs = null,
             slowestTimeUs = null,
@@ -64,7 +79,6 @@ class MainViewModel(
             originalFileSize = fileSize
         )
 
-        // Heavy mapping in background
         viewModelScope.launch(Dispatchers.Default) {
             originalImageData = BitmapMapper.toImageData(bitmap)
         }
@@ -79,7 +93,6 @@ class MainViewModel(
             contentResolver.openInputStream(uri)?.use { input ->
                 BitmapFactory.decodeStream(input, null, options)
 
-                // Re-open stream for ExifInterface to handle rotation
                 contentResolver.openInputStream(uri)?.use { exifInput ->
                     val exif = ExifInterface(exifInput)
                     val orientation = exif.getAttributeInt(

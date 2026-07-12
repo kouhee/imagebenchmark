@@ -7,7 +7,14 @@ enum class FilterType {
     fun displayName(): String {
         return when (this) {
             FilterType.GRAYSCALE -> "GrayScale"
-            FilterType.SOBEL -> "Sobel"
+            FilterType.SOBEL -> "Sobel(EdgeDetection)"
+        }
+    }
+
+    fun supportedEngines(): Set<ProcessingEngine> {
+        return when (this) {
+            FilterType.GRAYSCALE -> ProcessingEngine.entries.toSet()
+            FilterType.SOBEL -> setOf(ProcessingEngine.KOTLIN_BASIC, ProcessingEngine.NATIVE_BASIC)
         }
     }
 }
