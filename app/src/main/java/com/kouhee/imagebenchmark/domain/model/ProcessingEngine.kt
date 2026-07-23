@@ -5,7 +5,8 @@ enum class ProcessingEngine {
     KOTLIN_UPDATE,
     NATIVE_BASIC,
     KOTLIN_INTERPOLATED,
-    NATIVE_INTERPOLATED;
+    NATIVE_INTERPOLATED,
+    GPU_RENDER_EFFECT;
 
     fun displayName(): String {
         return when (this) {
@@ -14,6 +15,7 @@ enum class ProcessingEngine {
             ProcessingEngine.NATIVE_BASIC -> "Native Basic"
             ProcessingEngine.KOTLIN_INTERPOLATED -> "Kotlin Interpolated"
             ProcessingEngine.NATIVE_INTERPOLATED -> "Native Interpolated"
+            ProcessingEngine.GPU_RENDER_EFFECT -> "GPU RenderEffect"
         }
     }
 }

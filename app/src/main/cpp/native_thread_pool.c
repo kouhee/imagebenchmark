@@ -1,6 +1,9 @@
 #include "native_thread_pool.h"
 #include <pthread.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <sys/prctl.h>
+#include <android/trace.h>
 
 #define POOL_SIZE 4
 
@@ -35,6 +38,11 @@ static void* worker_loop(void* arg) {
     int worker_index = (int)(intptr_t)arg;
     int observed_generation = 0;
 
+    // Set thread name for easier identification in Perfetto/systrace
+    char thread_name[16];
+    snprintf(thread_name, sizeof(thread_name), "NativeWorker-%d", worker_index);
+    prctl(PR_SET_NAME, thread_name);
+
     pthread_mutex_lock(&g_pool.mutex);
     for (;;) {
         while (!g_pool.shutdown && g_pool.generation == observed_generation) {
@@ -56,7 +64,12 @@ static void* worker_loop(void* arg) {
         int active_workers = g_pool.active_workers;
         pthread_mutex_unlock(&g_pool.mutex);
 
+        char worker_trace_name[32];
+        snprintf(worker_trace_name, sizeof(worker_trace_name), "Worker-%d", worker_index);
+
+        ATrace_beginSection(worker_trace_name);
         task_fn(worker_index, active_workers, context);
+        ATrace_endSection();
 
         pthread_mutex_lock(&g_pool.mutex);
         g_pool.completed_workers++;

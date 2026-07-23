@@ -1,6 +1,7 @@
 #include "native_sobel.h"
 
 #include <android/log.h>
+#include <android/trace.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -73,18 +74,15 @@ jintArray native_process_sobel(
     jint width,
     jint height
 ) {
-    jint* pixels = (*env)->GetPrimitiveArrayCritical(env, imageData, NULL);
-    if (pixels != NULL) {
-        processSobelBasic((uint32_t*)pixels, width, height);
-        (*env)->ReleasePrimitiveArrayCritical(env, imageData, pixels, 0);
-        return imageData;
-    }
-
-    pixels = (*env)->GetIntArrayElements(env, imageData, NULL);
+    jint* pixels = (*env)->GetIntArrayElements(env, imageData, NULL);
     if (pixels == NULL) {
         return NULL;
     }
+
+    ATrace_beginSection("NativeSobel_Total");
     processSobelBasic((uint32_t*)pixels, width, height);
+    ATrace_endSection();
+
     (*env)->ReleaseIntArrayElements(env, imageData, pixels, 0);
     return imageData;
 }

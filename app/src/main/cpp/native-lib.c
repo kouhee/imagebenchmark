@@ -2,6 +2,7 @@
 
 #include "native_grayscale.h"
 #include "native_sobel.h"
+#include "native_thread_pool.h"
 
 JNIEXPORT jintArray JNICALL
 Java_com_kouhee_imagebenchmark_data_processor_NativeKotlinNaiveGrayScaleProcessor_convertToGrayScale(
@@ -31,4 +32,13 @@ JNIEXPORT jstring JNICALL
 Java_com_kouhee_imagebenchmark_MainActivity_stringFromJNI(JNIEnv* env, jobject thiz) {
     (void)thiz;
     return (*env)->NewStringUTF(env, "Hello from Optimized Native Lib!");
+}
+
+JNIEXPORT void JNICALL
+Java_com_kouhee_imagebenchmark_presentation_viewmodel_CameraPreviewViewModel_nativeShutdownThreadPool(
+    JNIEnv* env, jobject thiz
+) {
+    (void)env;
+    (void)thiz;
+    native_thread_pool_shutdown();
 }

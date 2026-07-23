@@ -1,6 +1,7 @@
 #include "native_grayscale.h"
 
 #include <android/log.h>
+#include <android/trace.h>
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -225,18 +226,15 @@ jintArray native_process_grayscale(
 ) {
     int totalPixels = width * height;
 
-    jint* pixels = (*env)->GetPrimitiveArrayCritical(env, imageData, NULL);
-    if (pixels != NULL) {
-        processMultithreaded((uint32_t*)pixels, totalPixels, OPTIMAL_THREAD_COUNT, interpolated);
-        (*env)->ReleasePrimitiveArrayCritical(env, imageData, pixels, 0);
-        return imageData;
-    }
-
-    pixels = (*env)->GetIntArrayElements(env, imageData, NULL);
+    jint* pixels = (*env)->GetIntArrayElements(env, imageData, NULL);
     if (pixels == NULL) {
         return NULL;
     }
+
+    ATrace_beginSection("NativeGrayscale_Total");
     processMultithreaded((uint32_t*)pixels, totalPixels, OPTIMAL_THREAD_COUNT, interpolated);
+    ATrace_endSection();
+
     (*env)->ReleaseIntArrayElements(env, imageData, pixels, 0);
     return imageData;
 }

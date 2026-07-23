@@ -41,7 +41,7 @@ class ImageProcessorRepositoryImplSimple(
 
         result.processingTimeUs = processingTimeUs
         result.processingTimeMs = processingTimeUs / 1000.0
-        Log.d(TAG, "process END #$eventId on ${Thread.currentThread().name}, $logic, time: ${processingTimeUs}us")
+
         Trace.endAsyncSection(TRACE_NAME, eventId)
         return result
     }

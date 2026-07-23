@@ -58,6 +58,17 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
     // for analize performance
-    implementation("androidx.tracing:tracing:1.3.0")
-    implementation("androidx.core:core:1.19.0")
+    implementation(libs.androidx.tracing)
+    implementation(libs.androidx.core)
+
+    // camera
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.camera.video)
+    implementation(libs.accompanist.permissions)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.coil.kt.coil.compose)
 }
