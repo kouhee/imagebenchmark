@@ -6,9 +6,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.kouhee.imagebenchmark.data.loader.BitmapLoader
 import com.kouhee.imagebenchmark.di.AppContainer
+import com.kouhee.imagebenchmark.presentation.screen.CameraPreviewScreen
 import com.kouhee.imagebenchmark.presentation.screen.MainScreen
+import com.kouhee.imagebenchmark.presentation.viewmodel.CameraPreviewViewModel
 import com.kouhee.imagebenchmark.presentation.viewmodel.MainViewModel
 import java.io.IOException
 
@@ -23,6 +29,10 @@ class MainActivity : ComponentActivity() {
     private external fun stringFromJNI(): String
 
     private val viewModel = MainViewModel(
+        AppContainer.processImageUseCase
+    )
+
+    private val cameraViewModel = CameraPreviewViewModel(
         AppContainer.processImageUseCase
     )
 
@@ -53,22 +63,36 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val uiState = viewModel.uiState.collectAsState()
+            var showCameraPreview by remember { mutableStateOf(false) }
+
             MaterialTheme {
-                MainScreen(
-                    uiState = uiState.value,
-                    onUriSelected = { uri ->
-                        viewModel.loadImage(contentResolver, uri)
-                    },
-                    onFilterSelected = { filter ->
-                        viewModel.setFilter(filter)
-                    },
-                    onEngineSelected = { engine ->
-                        viewModel.setEngine(engine)
-                    },
-                    onProcessClick = {
-                        viewModel.processImage()
-                    }
-                )
+                if (showCameraPreview) {
+                    CameraPreviewScreen(
+                        viewModel = cameraViewModel,
+                        selectedFilter = uiState.value.selectedFilter,
+                        selectedEngine = uiState.value.selectedEngine,
+                        onBackClick = { showCameraPreview = false }
+                    )
+                } else {
+                    MainScreen(
+                        uiState = uiState.value,
+                        onUriSelected = { uri ->
+                            viewModel.loadImage(contentResolver, uri)
+                        },
+                        onFilterSelected = { filter ->
+                            viewModel.setFilter(filter)
+                        },
+                        onEngineSelected = { engine ->
+                            viewModel.setEngine(engine)
+                        },
+                        onProcessClick = {
+                            viewModel.processImage()
+                        },
+                        onCameraClick = {
+                            showCameraPreview = true
+                        }
+                    )
+                }
             }
         }
     }

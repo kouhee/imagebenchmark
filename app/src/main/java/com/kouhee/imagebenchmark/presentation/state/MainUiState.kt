@@ -23,4 +23,5 @@ data class MainUiState(
     val originalFileSize: Long = 0L,
     val jniString: String = "",
     val threadCount: Int = Runtime.getRuntime().availableProcessors(),
+    val timeHistoryUs: List<Double> = emptyList()
 )

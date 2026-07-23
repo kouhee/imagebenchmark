@@ -37,7 +37,7 @@ object BitmapMapper {
             targetBitmap.isMutable) {
             targetBitmap
         } else {
-            createBitmap(image.width, image.height)
+            createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
         }
 
         bitmap.setPixels(

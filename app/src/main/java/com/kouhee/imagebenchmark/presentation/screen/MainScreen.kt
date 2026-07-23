@@ -6,227 +6,431 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.kouhee.imagebenchmark.domain.model.FilterType
 import com.kouhee.imagebenchmark.domain.model.ProcessingEngine
 import com.kouhee.imagebenchmark.presentation.state.MainUiState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     uiState: MainUiState,
     onUriSelected: (Uri) -> Unit,
     onFilterSelected: (FilterType) -> Unit,
     onEngineSelected: (ProcessingEngine) -> Unit,
-    onProcessClick: () -> Unit
+    onProcessClick: () -> Unit,
+    onCameraClick: () -> Unit
 ) {
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri -> uri?.let(onUriSelected) }
     val supportedEngines = uiState.selectedFilter.supportedEngines()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(10.dp)
-    ) {
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Performance Lab",
-                style = MaterialTheme.typography.headlineMedium
-            )
-        }
-
-        if (uiState.jniString.isNotEmpty()) {
-            Text(
-                text = uiState.jniString,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.secondary
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = {
-                photoPicker.launch(
-                    PickVisualMediaRequest(
-                        ActivityResultContracts.PickVisualMedia.ImageOnly
-                    )
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("Performance Lab", style = MaterialTheme.typography.titleLarge)
+                        if (uiState.jniString.isNotEmpty()) {
+                            Text(
+                                text = uiState.jniString,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 )
-            }
-        ) {
-            Text("画像を選択")
+            )
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text("Filter :", style = MaterialTheme.typography.titleSmall)
-        Row(Modifier.selectableGroup()) {
-            FilterType.entries.forEach { filter ->
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // 1. Action Row (Readability focus)
+            item {
                 Row(
-                    Modifier
-                        .selectable(
-                            selected = (uiState.selectedFilter == filter),
-                            onClick = { onFilterSelected(filter) },
-                            role = Role.RadioButton
-                        )
-                        .padding(horizontal = 8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    RadioButton(
-                        selected = (uiState.selectedFilter == filter),
-                        onClick = null // null recommended for accessibility with screen readers
+                    SourceButton(
+                        text = "Pick",
+                        icon = Icons.Default.PhotoLibrary,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            photoPicker.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
                     )
-                    Text(text = filter.displayName())
+                    SourceButton(
+                        text = "Camera",
+                        icon = Icons.Default.CameraAlt,
+                        modifier = Modifier.weight(1f),
+                        onClick = onCameraClick
+                    )
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            // 2. Filter & Stats Row (Balanced size)
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        Text(
+                            "Filter",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        // Display Main Result clearly
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = "%.2f".format(uiState.elapsedTimeUs / 1000.0),
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Text(
+                                " ms",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                        }
+                    }
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                    ) {
+                        SingleChoiceSegmentedButtonRow(
+                            modifier = Modifier.width(IntrinsicSize.Max)
+                        ) {
+                            FilterType.entries.forEachIndexed { index, filter ->
+                                SegmentedButton(
+                                    shape = SegmentedButtonDefaults.itemShape(
+                                        index = index,
+                                        count = FilterType.entries.size
+                                    ),
+                                    onClick = { onFilterSelected(filter) },
+                                    selected = uiState.selectedFilter == filter,
+                                    label = { Text(filter.displayName(), style = MaterialTheme.typography.bodyMedium) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
-        Text("Engine :", style = MaterialTheme.typography.titleSmall)
-        Column(Modifier.selectableGroup()) {
-            ProcessingEngine.entries.forEach { engine ->
-                val isSupported = engine in supportedEngines
-                Row(
-                    Modifier
+            // 3. Engine Grid (Better readability)
+            item {
+                Text(
+                    "Engine",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .selectableGroup()
+                            .padding(vertical = 4.dp)
+                    ) {
+                        ProcessingEngine.entries.chunked(2).forEach { rowEngines ->
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                rowEngines.forEach { engine ->
+                                    val isSupported = engine in supportedEngines
+                                    ReadableEngineOption(
+                                        engine = engine,
+                                        isSelected = uiState.selectedEngine == engine,
+                                        isSupported = isSupported,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = { onEngineSelected(engine) }
+                                    )
+                                }
+                                if (rowEngines.size < 2) Spacer(Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. Run Button (Large & Readable)
+            item {
+                Button(
+                    onClick = onProcessClick,
+                    modifier = Modifier
                         .fillMaxWidth()
-                        .alpha(if (isSupported) 1f else 0.45f)
-                        .selectable(
-                            enabled = isSupported,
-                            selected = (uiState.selectedEngine == engine),
-                            onClick = { onEngineSelected(engine) },
-                            role = Role.RadioButton
-                        )
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    RadioButton(
-                        enabled = isSupported,
-                        selected = (uiState.selectedEngine == engine),
-                        onClick = null
+                    Icon(Icons.Default.PlayArrow, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("RUN BENCHMARK", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            // 5. Images
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ResultImagePanel(
+                        title = "BEFORE",
+                        bitmap = uiState.inputBitmap,
+                        modifier = Modifier.weight(1f),
+                        info = if (uiState.originalWidth > 0) "${uiState.originalWidth}x${uiState.originalHeight}" else null
                     )
-                    Text(
-                        text = if (isSupported) engine.displayName() else "${engine.displayName()} (未対応)"
+                    ResultImagePanel(
+                        title = "AFTER",
+                        bitmap = uiState.outputBitmap,
+                        modifier = Modifier.weight(1f),
+                        info = uiState.selectedEngine.name
                     )
                 }
             }
-        }
 
-        if (uiState.originalWidth > 0) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Original File: ${uiState.originalWidth} x ${uiState.originalHeight} (${formatBytes(uiState.originalFileSize)})",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
+            // 6. Metrics & History
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Top row for static metrics
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        MetricItem("Cores", "${uiState.threadCount}", Modifier.weight(1f))
+                        MetricItem("Min", formatTimeUs(uiState.fastestTimeUs), Modifier.weight(1.5f))
+                        MetricItem("Max", formatTimeUs(uiState.slowestTimeUs), Modifier.weight(1.5f))
+                    }
+                    
+                    // History row
+                    if (uiState.timeHistoryUs.isNotEmpty()) {
+                        Column {
+                            Text(
+                                "HISTORY (last 10)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                uiState.timeHistoryUs.forEach { time ->
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(MaterialTheme.colorScheme.surface)
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "%.1f ms".format(time / 1000.0),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontSize = 9.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReadableEngineOption(
+    engine: ProcessingEngine,
+    isSelected: Boolean,
+    isSupported: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = modifier
+            .selectable(
+                selected = isSelected,
+                enabled = isSupported,
+                onClick = onClick,
+                role = Role.RadioButton
             )
-        }
-
-        uiState.inputBitmap?.let { bitmap ->
-            val memorySize = bitmap.width * bitmap.height * 4L
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Memory: ${bitmap.width} x ${bitmap.height} (${formatBytes(memorySize)})",
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = onProcessClick,
-        ) {
-            Text("実行")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Elapsed : %.3f μs".format(uiState.elapsedTimeUs),
-            style = MaterialTheme.typography.bodyLarge
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = isSelected,
+            onClick = null,
+            enabled = isSupported,
+            modifier = Modifier.size(20.dp)
         )
-
+        Spacer(Modifier.width(8.dp))
         Text(
-            text = "Fastest (${uiState.selectedEngine.displayName()}) : ${formatTimeUs(uiState.fastestTimeUs)}",
-            style = MaterialTheme.typography.bodySmall
-        )
-
-        Text(
-            text = "Slowest (${uiState.selectedEngine.displayName()}) : ${formatTimeUs(uiState.slowestTimeUs)}",
-            style = MaterialTheme.typography.bodySmall
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Available CPU cores: ${uiState.threadCount}",
+            text = engine.displayName(),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.secondary
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        ImagePanel(
-            title = "BEFORE",
-            bitmap = uiState.inputBitmap,
-            modifier = Modifier.weight(1f)
-        )
-
-        ImagePanel(
-            title = "AFTER",
-            bitmap = uiState.outputBitmap,
-            modifier = Modifier.weight(1f)
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            color = if (isSupported) MaterialTheme.colorScheme.onSurface 
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
         )
     }
 }
 
 @Composable
-private fun ImagePanel(title: String, bitmap: Bitmap?, modifier: Modifier) {
+private fun MetricItem(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun SourceButton(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(48.dp),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(text, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun ResultImagePanel(
+    title: String,
+    bitmap: Bitmap?,
+    info: String?,
+    modifier: Modifier = Modifier
+) {
     Column(modifier = modifier) {
         Text(
             text = title,
-            style = MaterialTheme.typography.labelLarge
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 4.dp)
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        if (bitmap != null) {
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = title,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-            )
-        } else {
-            Spacer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+                info?.let {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .background(Color.Black.copy(alpha = 0.6f))
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                    ) {
+                        Text(it, color = Color.White, fontSize = 10.sp)
+                    }
+                }
+            } else {
+                Text(
+                    "No Image",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

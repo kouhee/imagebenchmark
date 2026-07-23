@@ -1,12 +1,10 @@
 package com.kouhee.imagebenchmark.presentation.viewmodel
 
-import android.graphics.Bitmap
 import android.content.ContentResolver
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.ImageDecoder
 import android.net.Uri
-import android.os.Build
-import androidx.exifinterface.media.ExifInterface
+import android.os.Trace
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kouhee.imagebenchmark.data.mapper.BitmapMapper
@@ -16,6 +14,7 @@ import com.kouhee.imagebenchmark.domain.model.ProcessingEngine
 import com.kouhee.imagebenchmark.domain.usecase.ProcessImageUseCase
 import com.kouhee.imagebenchmark.presentation.state.EngineTimingStats
 import com.kouhee.imagebenchmark.presentation.state.MainUiState
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,110 +35,78 @@ class MainViewModel(
         _uiState.value = _uiState.value.copy(jniString = text)
     }
 
-    fun setFilter(filterType: FilterType) {
-        val state = _uiState.value
-        val supportedEngines = filterType.supportedEngines()
-        val nextEngine = if (state.selectedEngine in supportedEngines) {
-            state.selectedEngine
+    fun setFilter(filter: FilterType) {
+        val supportedEngines = filter.supportedEngines()
+        val currentEngine = _uiState.value.selectedEngine
+        
+        val newEngine = if (currentEngine in supportedEngines) {
+            currentEngine
         } else {
             supportedEngines.first()
         }
-        val stats = state.engineTimingStats[nextEngine]
-        _uiState.value = state.copy(
-            selectedFilter = filterType,
-            selectedEngine = nextEngine,
+
+        val stats = _uiState.value.engineTimingStats[newEngine]
+
+        _uiState.value = _uiState.value.copy(
+            selectedFilter = filter,
+            selectedEngine = newEngine,
             fastestTimeUs = stats?.fastestTimeUs,
-            slowestTimeUs = stats?.slowestTimeUs
+            slowestTimeUs = stats?.slowestTimeUs,
+            elapsedTimeUs = 0.0
         )
     }
 
     fun setEngine(engine: ProcessingEngine) {
-        val state = _uiState.value
-        if (engine !in state.selectedFilter.supportedEngines()) {
-            return
-        }
-        val stats = state.engineTimingStats[engine]
-        _uiState.value = state.copy(
+        val stats = _uiState.value.engineTimingStats[engine]
+        _uiState.value = _uiState.value.copy(
             selectedEngine = engine,
             fastestTimeUs = stats?.fastestTimeUs,
-            slowestTimeUs = stats?.slowestTimeUs
+            slowestTimeUs = stats?.slowestTimeUs,
+            elapsedTimeUs = 0.0
         )
     }
 
-    fun setBitmap(bitmap: Bitmap, originalWidth: Int, originalHeight: Int, fileSize: Long) {
+    fun setBitmap(bitmap: Bitmap, width: Int, height: Int, fileSize: Long) {
+        val imageData = BitmapMapper.toImageData(bitmap)
+        originalImageData = imageData
         _uiState.value = _uiState.value.copy(
             inputBitmap = bitmap,
             outputBitmap = null,
+            originalWidth = width,
+            originalHeight = height,
+            originalFileSize = fileSize,
             elapsedTimeUs = 0.0,
             fastestTimeUs = null,
             slowestTimeUs = null,
             engineTimingStats = emptyMap(),
-            originalWidth = originalWidth,
-            originalHeight = originalHeight,
-            originalFileSize = fileSize
+            timeHistoryUs = emptyList()
         )
-
-        viewModelScope.launch(Dispatchers.Default) {
-            originalImageData = BitmapMapper.toImageData(bitmap)
-        }
     }
 
     fun loadImage(contentResolver: ContentResolver, uri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
-            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            var originalWidth = 0
-            var originalHeight = 0
-
-            contentResolver.openInputStream(uri)?.use { input ->
-                BitmapFactory.decodeStream(input, null, options)
-
-                contentResolver.openInputStream(uri)?.use { exifInput ->
-                    val exif = ExifInterface(exifInput)
-                    val orientation = exif.getAttributeInt(
-                        ExifInterface.TAG_ORIENTATION,
-                        ExifInterface.ORIENTATION_NORMAL
-                    )
-
-                    if (orientation == ExifInterface.ORIENTATION_ROTATE_90 ||
-                        orientation == ExifInterface.ORIENTATION_ROTATE_270) {
-                        originalWidth = options.outHeight
-                        originalHeight = options.outWidth
-                    } else {
-                        originalWidth = options.outWidth
-                        originalHeight = options.outHeight
-                    }
+            try {
+                val inputStream = contentResolver.openInputStream(uri) ?: return@launch
+                
+                // Get original dimensions
+                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeStream(contentResolver.openInputStream(uri), null, options)
+                
+                // Get file size
+                var fileSize = 0L
+                contentResolver.openAssetFileDescriptor(uri, "r")?.use { fd ->
+                    fileSize = fd.length
                 }
-            }
 
-            val fileSize = contentResolver.openAssetFileDescriptor(uri, "r")?.use {
-                if (it.length >= 0) it.length else 0L
-            } ?: 0L
+                // Load bitmap
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream.close()
 
-            val source = ImageDecoder.createSource(contentResolver, uri)
-            val bitmap = ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
-                decoder.isMutableRequired = true
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                withContext(Dispatchers.Main) {
+                    setBitmap(bitmap, options.outWidth, options.outHeight, fileSize)
                 }
-            }
-
-            val imageData = withContext(Dispatchers.Default) {
-                BitmapMapper.toImageData(bitmap)
-            }
-
-            withContext(Dispatchers.Main) {
-                originalImageData = imageData
-                _uiState.value = _uiState.value.copy(
-                    inputBitmap = bitmap,
-                    outputBitmap = bitmap,
-                    elapsedTimeUs = 0.0,
-                    fastestTimeUs = null,
-                    slowestTimeUs = null,
-                    engineTimingStats = emptyMap(),
-                    originalWidth = originalWidth,
-                    originalHeight = originalHeight,
-                    originalFileSize = fileSize
-                )
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -147,49 +114,55 @@ class MainViewModel(
     fun processImage() {
         val image = originalImageData ?: return
 
-        viewModelScope.launch {
-            val state = _uiState.value
-            val buffer = if (processingBuffer == null || processingBuffer!!.size != image.pixels.size) {
-                image.pixels.copyOf().also { processingBuffer = it }
-            } else {
-                processingBuffer!!.also {
-                    System.arraycopy(image.pixels, 0, it, 0, image.pixels.size)
+        val context = Dispatchers.Default + CoroutineName("MainImageProcessingTask")
+        viewModelScope.launch(context) {
+            val traceId = System.nanoTime().toInt()
+            Trace.beginAsyncSection("MainImageProcessingTask", traceId)
+            try {
+                val state = _uiState.value
+                val buffer = if (processingBuffer == null || processingBuffer!!.size != image.pixels.size) {
+                    image.pixels.copyOf().also { processingBuffer = it }
+                } else {
+                    processingBuffer!!.also {
+                        System.arraycopy(image.pixels, 0, it, 0, image.pixels.size)
+                    }
                 }
-            }
-            val imageToProcess = ImageData(image.width, image.height, buffer)
+                val imageToProcess = ImageData(image.width, image.height, buffer)
 
-            val result = withContext(Dispatchers.Default) {
-                processImageUseCase(
+                val result = processImageUseCase(
                     imageToProcess,
                     state.selectedFilter,
                     state.selectedEngine
                 )
-            }
 
-            val bitmap = withContext(Dispatchers.Default) {
-                BitmapMapper.toBitmap(result)
-            }
+                val bitmap = BitmapMapper.toBitmap(result)
 
-            withContext(Dispatchers.Main) {
-                val currentState = _uiState.value
-                val selectedEngine = state.selectedEngine
-                val existingStats = currentState.engineTimingStats[selectedEngine]
-                val updatedStats = EngineTimingStats(
-                    fastestTimeUs = existingStats?.fastestTimeUs?.let { minOf(it, result.processingTimeUs) }
-                        ?: result.processingTimeUs,
-                    slowestTimeUs = existingStats?.slowestTimeUs?.let { maxOf(it, result.processingTimeUs) }
-                        ?: result.processingTimeUs
-                )
-                val updatedStatsMap = currentState.engineTimingStats + (selectedEngine to updatedStats)
-                _uiState.value = _uiState.value.copy(
-                    outputBitmap = bitmap,
-                    elapsedTimeUs = result.processingTimeUs,
-                    fastestTimeUs = updatedStats.fastestTimeUs,
-                    slowestTimeUs = updatedStats.slowestTimeUs,
-                    engineTimingStats = updatedStatsMap,
-                )
+                withContext(Dispatchers.Main) {
+                    val currentState = _uiState.value
+                    val selectedEngine = state.selectedEngine
+                    val existingStats = currentState.engineTimingStats[selectedEngine]
+                    val updatedStats = EngineTimingStats(
+                        fastestTimeUs = existingStats?.fastestTimeUs?.let { minOf(it, result.processingTimeUs) }
+                            ?: result.processingTimeUs,
+                        slowestTimeUs = existingStats?.slowestTimeUs?.let { maxOf(it, result.processingTimeUs) }
+                            ?: result.processingTimeUs
+                    )
+                    val updatedStatsMap = currentState.engineTimingStats + (selectedEngine to updatedStats)
+                    
+                    val newHistory = (listOf(result.processingTimeUs) + currentState.timeHistoryUs).take(10)
+
+                    _uiState.value = _uiState.value.copy(
+                        outputBitmap = bitmap,
+                        elapsedTimeUs = result.processingTimeUs,
+                        fastestTimeUs = updatedStats.fastestTimeUs,
+                        slowestTimeUs = updatedStats.slowestTimeUs,
+                        engineTimingStats = updatedStatsMap,
+                        timeHistoryUs = newHistory
+                    )
+                }
+            } finally {
+                Trace.endAsyncSection("MainImageProcessingTask", traceId)
             }
         }
     }
-
 }
