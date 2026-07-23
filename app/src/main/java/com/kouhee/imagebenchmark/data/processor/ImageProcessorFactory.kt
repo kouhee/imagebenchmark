@@ -12,6 +12,7 @@ class ImageProcessorFactory {
 
         return processorCache.getOrPut(key) {
             when (filter) {
+                FilterType.NONE -> IdentityProcessor()
                 FilterType.GRAYSCALE -> createGrayScaleProcessor(engine)
                 FilterType.SOBEL -> createSobelProcessor(engine)
             }
@@ -25,6 +26,7 @@ class ImageProcessorFactory {
             ProcessingEngine.NATIVE_BASIC -> NativeKotlinNaiveGrayScaleProcessor()
             ProcessingEngine.KOTLIN_INTERPOLATED -> InterpolatedGrayScaleProcessor()
             ProcessingEngine.NATIVE_INTERPOLATED -> NativeInterpolatedGrayScaleProcessor()
+            ProcessingEngine.GPU_RENDER_EFFECT -> GPURenderEffectGrayScaleProcessor()
         }
     }
 
@@ -32,6 +34,7 @@ class ImageProcessorFactory {
         return when (engine) {
             ProcessingEngine.KOTLIN_BASIC -> BasicSobelProcessor()
             ProcessingEngine.NATIVE_BASIC -> NativeSobelProcessor()
+            ProcessingEngine.GPU_RENDER_EFFECT -> GPURenderEffectSobelProcessor()
             else -> throw IllegalArgumentException("Unsupported engine for SOBEL: $engine")
         }
     }

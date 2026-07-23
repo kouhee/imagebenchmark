@@ -1,6 +1,8 @@
 package com.kouhee.imagebenchmark.data.processor
 
+import android.os.Trace
 import com.kouhee.imagebenchmark.domain.model.ImageData
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -19,23 +21,28 @@ class KotlinNaiveGrayScaleProcessor : ImageProcessor {
         }
     }
 
-    override suspend fun process(image: ImageData): ImageData = withContext(Dispatchers.Default) {
-        val pixels = image.pixels
-        val totalPixels = pixels.size
-        val numThreads = Runtime.getRuntime().availableProcessors()
-        val chunkSize = totalPixels / numThreads
+    override suspend fun process(image: ImageData): ImageData = withContext(Dispatchers.Default + CoroutineName("KotlinNaiveGrayScale")) {
+        Trace.beginSection("KotlinNaiveGrayScale_Process")
+        try {
+            val pixels = image.pixels
+            val totalPixels = pixels.size
+            val numThreads = Runtime.getRuntime().availableProcessors()
+            val chunkSize = totalPixels / numThreads
 
-        coroutineScope {
-            val jobs = (0 until numThreads).map { i ->
-                async {
-                    val start = i * chunkSize
-                    val end = if (i == numThreads - 1) totalPixels else (i + 1) * chunkSize
-                    processRangeWithTable(pixels, start, end)
+            coroutineScope {
+                val jobs = (0 until numThreads).map { i ->
+                    async(CoroutineName("KotlinNaiveGrayScale_Worker_$i")) {
+                        val start = i * chunkSize
+                        val end = if (i == numThreads - 1) totalPixels else (i + 1) * chunkSize
+                        processRangeWithTable(pixels, start, end)
+                    }
                 }
+                jobs.awaitAll()
             }
-            jobs.awaitAll()
+            image
+        } finally {
+            Trace.endSection()
         }
-        image
     }
 
     private fun processRangeWithTable(

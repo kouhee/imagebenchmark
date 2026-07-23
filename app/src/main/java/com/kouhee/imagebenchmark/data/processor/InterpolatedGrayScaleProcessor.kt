@@ -1,9 +1,10 @@
 package com.kouhee.imagebenchmark.data.processor
 
+import android.os.Trace
 import android.util.Log
-import androidx.tracing.Trace
 import com.kouhee.imagebenchmark.common.timing.ProcessingTimer
 import com.kouhee.imagebenchmark.domain.model.ImageData
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -30,36 +31,38 @@ class InterpolatedGrayScaleProcessor : ImageProcessor {
         }
     }
 
-    override suspend fun process(image: ImageData): ImageData = withContext(Dispatchers.Default) {
+    override suspend fun process(image: ImageData): ImageData = withContext(Dispatchers.Default + CoroutineName("InterpolatedGrayScale")) {
         Log.d("InterpolatedGrayScale", "process START")
-        val traceId = System.nanoTime().toInt()
-        android.os.Trace.beginAsyncSection("InterpolatedGrayScale", traceId)
+        Trace.beginSection("InterpolatedGrayScale_Process")
         
-        val start = ProcessingTimer.mark()
+        try {
+            val start = ProcessingTimer.mark()
 
-        val pixels = image.pixels
-        val totalPixels = pixels.size
-        val numThreads = Runtime.getRuntime().availableProcessors()
+            val pixels = image.pixels
+            val totalPixels = pixels.size
+            val numThreads = Runtime.getRuntime().availableProcessors()
 
-        Log.i("InterpolatedGrayScale", "=== INTERPOLATED PROCESSING (1/2 compute + linear interpolation) ===")
-        
-        coroutineScope {
-            val chunkSize = totalPixels / numThreads
+            Log.i("InterpolatedGrayScale", "=== INTERPOLATED PROCESSING (1/2 compute + linear interpolation) ===")
+            
+            coroutineScope {
+                val chunkSize = totalPixels / numThreads
 
-            val jobs = (0 until numThreads).map { i ->
-                async {
-                    val start = i * chunkSize
-                    val end = if (i == numThreads - 1) totalPixels else (i + 1) * chunkSize
-                    processInterpolated(pixels, start, end)
+                val jobs = (0 until numThreads).map { i ->
+                    async(CoroutineName("InterpolatedGrayScale_Worker_$i")) {
+                        val start = i * chunkSize
+                        val end = if (i == numThreads - 1) totalPixels else (i + 1) * chunkSize
+                        processInterpolated(pixels, start, end)
+                    }
                 }
+                jobs.awaitAll()
             }
-            jobs.awaitAll()
-        }
 
-        val timing = ProcessingTimer.durationUs(start, ProcessingTimer.mark())
-        Log.i("InterpolatedGrayScale", "Interpolated processing time: ${timing.timeMs} ms")
-        Trace.endAsyncSection("InterpolatedGrayScale", traceId)
-        image
+            val timing = ProcessingTimer.durationUs(start, ProcessingTimer.mark())
+            Log.i("InterpolatedGrayScale", "Interpolated processing time: ${timing.timeMs} ms")
+            image
+        } finally {
+            Trace.endSection()
+        }
     }
 
     private fun processInterpolated(
